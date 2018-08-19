@@ -100,9 +100,9 @@ func ParseResponse(input []byte) {
 }
 
 func main() {
-	yelpAPIUrl, yelpAPIToken, debug := ReadConfig()
-	keywordSearch, zipSearch, distanceSearch := ParseCLI(debug)
-	RestyConfig(yelpAPIUrl, yelpAPIToken, debug)
-	buisnessBody := RequestBuisnessSearch(keywordSearch, zipSearch, distanceSearch)
+  yelpAPIUrl, yelpAPIToken, debug := ReadConfig()
+  keywordSearch, zipSearch, distanceSearch := ParseCLI(debug)
+  RestyConfig(yelpAPIUrl, yelpAPIToken, debug)
+  buisnessBody := RequestBuisnessSearch(keywordSearch, zipSearch, distanceSearch)
   ParseResponse(buisnessBody)
 }
