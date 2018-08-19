@@ -1,0 +1,4 @@
+yelp:
+  api_url: "https://api.yelp.com/v3/"
+  api_token: "apitokengoeshere"
+debug: false
