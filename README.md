@@ -10,3 +10,14 @@ Usage of ./yelp_me_linux:
   -s, --search string   Keyword to search for on Yelp. REQUIRED
   -z, --zip int         Zip code to search around. REQUIRED (default 12345)
 ````
+To build from source. 
+1. Install Go. Guide here: https://golang.org/doc/install
+2. Install the required packages. 
+  ````
+   go get github.com/Jeffail/gabs
+   go get github.com/spf13/pflag
+   go get github.com/spf13/viper
+   go get gopkg.in/resty.v1
+  ````
+3. ````go build ./yelp_me.go````
+4. Profit.
