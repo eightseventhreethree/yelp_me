@@ -1,5 +1,7 @@
 # yelp_me
-[![Maintainability](https://api.codeclimate.com/v1/badges/b3de630446f26e76666b/maintainability)](https://codeclimate.com/github/eightseventhreethree/yelp_me/maintainability)
+CodeClimate: [![Maintainability](https://api.codeclimate.com/v1/badges/b3de630446f26e76666b/maintainability)](https://codeclimate.com/github/eightseventhreethree/yelp_me/maintainability)
+
+CircleCI: [![CircleCI](https://circleci.com/gh/eightseventhreethree/yelp_me/tree/master.svg?style=svg)](https://circleci.com/gh/eightseventhreethree/yelp_me/tree/master)
 
 A CLI tool for finding food on Yelp using the Yelp API. 
 Requires an API token from Yelp. 
