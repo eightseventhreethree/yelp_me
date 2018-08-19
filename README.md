@@ -1,4 +1,6 @@
 # yelp_me
+[![Maintainability](https://api.codeclimate.com/v1/badges/b3de630446f26e76666b/maintainability)](https://codeclimate.com/github/eightseventhreethree/yelp_me/maintainability)
+
 A CLI tool for finding food on Yelp using the Yelp API. 
 Requires an API token from Yelp. 
 Guide found here: https://www.yelp.com/developers/documentation/v3/authentication
