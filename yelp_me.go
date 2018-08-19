@@ -76,6 +76,7 @@ func RequestBuisnessSearch(keywordSearch string, zipSearch int, distanceSearch i
 			"term":     keywordSearch,
 			"location": strconv.Itoa(zipSearch),
 			"radius":   strconv.Itoa(distanceSearch),
+      "categories": "restaurants",
 			"open_now": "true",
 			"sort_by":  "rating",
 		}).
@@ -94,7 +95,7 @@ func ParseResponse(input []byte) {
   }
   children, _ := jsonParsed.S("businesses").Children()
   for _, child := range children {
-	  fmt.Println(" Name:", child.Search("name").Data(), " Is closed?:", child.Search("is_closed").Data(), " Rating:",  child.Search("rating").Data())
+	  fmt.Println("| Name:", child.Search("name").Data(), "| Review count: ", child.Search("review_count"), "| Rating:",  child.Search("rating").Data(), "| Price: ", child.Search("price"), "|")
   }
 }
 
