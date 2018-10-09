@@ -24,4 +24,5 @@ To build from source.
    go get gopkg.in/resty.v1
   ````
 3. ````go build ./yelp_me.go````
-4. Profit.
+4. Configure a .go_grub.yml file either in the based directory you are running yelp_me or in you home directory ~/.go_grub.yml. See the sample file in the project.
+5. Profit.
