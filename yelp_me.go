@@ -11,43 +11,43 @@ import (
 	"gopkg.in/resty.v1"
 )
 
-type ConfigObject interface {
+type Config interface {
 	GetAPIURL() string
 	GetAPIToken() string
-	GetDebug() bool
+	GetVerbose() bool
 	GetSearchValue() string
 	GetZipCode() int
 	GetDistanceValue() int
 }
 
-type InputStruct struct {
+type Input struct {
 	getAPIURL        string
 	getAPIToken      string
-	getDebug         bool
+	getVerbose         bool
 	getSearchValue   string
 	getZipCode       int
 	getDistanceValue int
 }
 
-func (i *InputStruct) GetAPIURL() string {
+func (i *Input) GetAPIURL() string {
 	if i.getAPIURL == "" {
 		return "<not implemented>"
 	}
 	return i.getAPIURL
 }
 
-func (i *InputStruct) GetAPIToken() string {
+func (i *Input) GetAPIToken() string {
 	if i.getAPIToken == "" {
 		return "<not implemented>"
 	}
 	return i.getAPIToken
 }
 
-func (i *InputStruct) GetDebug() bool {
-	return i.getDebug
+func (i *Input) GetVerbose() bool {
+	return i.getVerbose
 }
 
-func (i *InputStruct) GetSearchValue() string {
+func (i *Input) GetSearchValue() string {
 	if i.getSearchValue == "" {
 		fmt.Println("No arguments passed. Use --help to find out more.")
 		os.Exit(1)
@@ -55,15 +55,15 @@ func (i *InputStruct) GetSearchValue() string {
 	return i.getSearchValue
 }
 
-func (i *InputStruct) GetZipCode() int {
+func (i *Input) GetZipCode() int {
 	return i.getZipCode
 }
 
-func (i *InputStruct) GetDistanceValue() int {
+func (i *Input) GetDistanceValue() int {
 	return i.getDistanceValue
 }
 
-func Input() ConfigObject {
+func Base() Config {
 	config := viper.New()
 	config.SetConfigName(".go_grub")
 	config.AddConfigPath(".")
@@ -79,32 +79,31 @@ func Input() ConfigObject {
 		panic(fmt.Errorf(fatalStr, err))
 	}
 	config.SetDefault("yelp.api_url", "https://api.yelp.com/v3/")
-	config.SetDefault("debug", false)
-	debug := config.GetBool("debug")
 
 	var searchValue string
 	var zipCode int
 	var distance int
+	var verbose bool
 	pflag.StringVarP(&searchValue, "search", "s", "", "Keyword to search for on Yelp. REQUIRED")
 	pflag.IntVarP(&zipCode, "zip", "z", 12345, "Zip code to search around. REQUIRED")
 	pflag.IntVarP(&distance, "distance", "d", 10, "Distance in miles around the zip you are willing to look. NOT REQUIRED")
+	pflag.BoolVarP(&verbose, "verbose", "v", false, "Verbose mode")
 	pflag.Parse()
-	if debug {
+	if verbose {
 		fmt.Println("Here is the value of flag searchValue: ", searchValue)
 		fmt.Println("Here is the value of flag zipCode: ", zipCode)
 		fmt.Println("Here is the value of flag distanceArg: ", distance)
 	}
 
-	return &InputStruct{
+	return &Input{
 		getAPIURL:        config.Get("yelp.api_url").(string),
 		getAPIToken:      config.Get("yelp.api_token").(string),
-		getDebug:         debug,
+		getVerbose:       verbose,
 		getSearchValue:   searchValue,
 		getZipCode:       zipCode,
 		getDistanceValue: distance * 1609,
 	}
 }
-
 
 type Yelp struct {
 	yelpAPIUrl   string
@@ -162,9 +161,8 @@ func (y *Yelp) ParseResponse(input []byte) {
 }
 
 func main() {
-	input := Input()
-	fmt.Println("input.GetAPIToken = ", input.GetAPIToken())
-	yelp := Yelp{input.GetAPIURL(), input.GetAPIToken(), input.GetDebug(), input.GetSearchValue(), input.GetZipCode(), input.GetDistanceValue()}
+	base := Base()
+	yelp := Yelp{base.GetAPIURL(), base.GetAPIToken(), base.GetVerbose(), base.GetSearchValue(), base.GetZipCode(), base.GetDistanceValue()}
 	yelp.RestyConfig()
 	resp := yelp.RequestBuisnessSearch()
 	yelp.ParseResponse(resp)
