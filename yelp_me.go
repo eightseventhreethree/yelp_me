@@ -74,8 +74,7 @@ func Base() Config {
 		fatalStr := "Fatal error config file: %s \n" +
 			"Place config file in $HOME/.go_grub.yml\n" +
 			"yelp: \n  api_url: apiurlgoeshere (not required has default set)\n" +
-			"  api_token: apitokegoeshere \n" +
-			"debug: true (not required)"
+			"  api_token: apitokegoeshere \n"
 		panic(fmt.Errorf(fatalStr, err))
 	}
 	config.SetDefault("yelp.api_url", "https://api.yelp.com/v3/")
