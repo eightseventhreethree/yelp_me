@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	gabs "github.com/Jeffail/gabs"
+	log "github.com/sirupsen/logrus"
 	pflag "github.com/spf13/pflag"
 	viper "github.com/spf13/viper"
 	"gopkg.in/resty.v1"
@@ -10,7 +11,8 @@ import (
 	"strconv"
 )
 
-func ReadConfig() (string, string, bool) {
+// Get configuration from .yml file
+func ReadConfig() (string, string) {
 	viper.SetConfigName(".go_grub")
 	viper.AddConfigPath(".")
 	viper.AddConfigPath("$HOME/")
@@ -20,46 +22,49 @@ func ReadConfig() (string, string, bool) {
 		fatalStr := "Fatal error config file: %s \n" +
 			"Place config file in $HOME/.go_grub.yml\n" +
 			"yelp: \n  api_url: apiurlgoeshere (not required has default set)\n" +
-			"  api_token: apitokegoeshere \n" +
-			"debug: true (not required)"
+			"  api_token: apitokegoeshere \n"
 		panic(fmt.Errorf(fatalStr, err))
 	}
 	viper.SetDefault("yelp.api_url", "https://api.yelp.com/v3/")
-	viper.SetDefault("debug", false)
 	yelpAPIUrl := viper.Get("yelp.api_url")
 	yelpAPIToken := viper.Get("yelp.api_token")
-	debug := viper.GetBool("debug")
-	if debug {
-		fmt.Println("Here is the value of debugMode: ", debug)
-	}
-	return yelpAPIUrl.(string), yelpAPIToken.(string), debug
+	return yelpAPIUrl.(string), yelpAPIToken.(string)
 }
 
-func ParseCLI(debugMode bool) (string, int, int) {
+// Get CLI arguments and evaluate them
+func ParseCLI() (string, int, int) {
 	var searchArg string
 	var zipArg int
 	var distanceArg int
+	var verbose bool
 	pflag.StringVarP(&searchArg, "search", "s", "", "Keyword to search for on Yelp. REQUIRED")
 	pflag.IntVarP(&zipArg, "zip", "z", 12345, "Zip code to search around. REQUIRED")
 	pflag.IntVarP(&distanceArg, "distance", "d", 10, "Distance in miles around the zip you are willing to look. NOT REQUIRED")
+	pflag.BoolVarP(&verbose, "verbose", "v", false, "Verbose mode")
 	pflag.Parse()
-	if debugMode {
-		fmt.Println("Here is the value of flag searchArg: ", searchArg)
-		fmt.Println("Here is the value of flag zipArg: ", zipArg)
-		fmt.Println("Here is the value of flag distanceArg: ", distanceArg)
+	if verbose == false {
+		log.SetLevel(log.WarnLevel)
+	} else {
+		log.SetLevel(log.DebugLevel)
+		resty.SetDebug(true)
 	}
+	log.Debug("flag searchArg = ", searchArg)
+	log.Debug("flag zipArg = ", zipArg)
+	log.Debug("flag distanceArg = ", distanceArg)
 	if searchArg == "" {
 		fmt.Println("No arguments passed. Use --help to find out more.")
 		os.Exit(1)
 	}
+	// Convert from miles to meters to use in request
 	distanceArgMeter := distanceArg * 1609
+	log.Debug("distanceArgMeter = ", distanceArgMeter)
 	return searchArg, zipArg, distanceArgMeter
 }
 
-func RestyConfig(yelpAPIUrl string, yelpAPIToken string, debug bool) {
+// Resty global configuration
+func RestyConfig(yelpAPIUrl string, yelpAPIToken string) {
 	// Host URL for all request. So you can use relative URL in the request
 	resty.SetHostURL(yelpAPIUrl)
-	resty.SetDebug(debug)
 
 	// Headers for all request
 	resty.SetHeader("Accept", "application/json")
@@ -70,6 +75,7 @@ func RestyConfig(yelpAPIUrl string, yelpAPIToken string, debug bool) {
 	resty.SetAuthToken(yelpAPIToken)
 }
 
+// Get the list of buisnesses based on the requested arguments
 func RequestBuisnessSearch(keywordSearch string, zipSearch int, distanceSearch int) []byte {
 	resp, err := resty.R().
 		SetQueryParams(map[string]string{
@@ -81,13 +87,14 @@ func RequestBuisnessSearch(keywordSearch string, zipSearch int, distanceSearch i
 			"sort_by":    "rating",
 		}).
 		Get("businesses/search")
-	//fmt.Printf("\nResponse Body: %v", resp.String())
+	log.Debug("Response Body: ", resp.String())
 	if err != nil {
 		fmt.Printf("\nResponse Err: %v", err)
 	}
 	return resp.Body()
 }
 
+// Parse the response from RequestBuisnessSearch
 func ParseResponse(input []byte) {
 	jsonParsed, err := gabs.ParseJSON(input)
 	if err != nil {
@@ -100,9 +107,9 @@ func ParseResponse(input []byte) {
 }
 
 func main() {
-	yelpAPIUrl, yelpAPIToken, debug := ReadConfig()
-	keywordSearch, zipSearch, distanceSearch := ParseCLI(debug)
-	RestyConfig(yelpAPIUrl, yelpAPIToken, debug)
+	yelpAPIUrl, yelpAPIToken := ReadConfig()
+	keywordSearch, zipSearch, distanceSearch := ParseCLI()
+	RestyConfig(yelpAPIUrl, yelpAPIToken)
 	buisnessBody := RequestBuisnessSearch(keywordSearch, zipSearch, distanceSearch)
 	ParseResponse(buisnessBody)
 }

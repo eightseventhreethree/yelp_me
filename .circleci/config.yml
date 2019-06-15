@@ -26,4 +26,5 @@ jobs:
       - run: go get -v github.com/spf13/pflag
       - run: go get -v github.com/spf13/viper
       - run: go get -v gopkg.in/resty.v1
+      - run: go get -v github.com/sirupsen/logrus
       - run: go build -v yelp_me.go
