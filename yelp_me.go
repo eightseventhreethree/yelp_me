@@ -2,69 +2,121 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"strconv"
+
 	gabs "github.com/Jeffail/gabs"
-	log "github.com/sirupsen/logrus"
 	pflag "github.com/spf13/pflag"
 	viper "github.com/spf13/viper"
 	"gopkg.in/resty.v1"
-	"os"
-	"strconv"
 )
 
-// Get configuration from .yml file
-func ReadConfig() (string, string) {
-	viper.SetConfigName(".go_grub")
-	viper.AddConfigPath(".")
-	viper.AddConfigPath("$HOME/")
-	viper.SetConfigType("yaml")
-	err := viper.ReadInConfig() // Find and read the config file
-	if err != nil {             // Handle errors reading the config file
+type Config interface {
+	GetAPIURL() string
+	GetAPIToken() string
+	GetVerbose() bool
+	GetSearchValue() string
+	GetZipCode() int
+	GetDistanceValue() int
+}
+
+type Input struct {
+	getAPIURL        string
+	getAPIToken      string
+	getVerbose       bool
+	getSearchValue   string
+	getZipCode       int
+	getDistanceValue int
+}
+
+func (i *Input) GetAPIURL() string {
+	if i.getAPIURL == "" {
+		return "<not implemented>"
+	}
+	return i.getAPIURL
+}
+
+func (i *Input) GetAPIToken() string {
+	if i.getAPIToken == "" {
+		return "<not implemented>"
+	}
+	return i.getAPIToken
+}
+
+func (i *Input) GetVerbose() bool {
+	return i.getVerbose
+}
+
+func (i *Input) GetSearchValue() string {
+	if i.getSearchValue == "" {
+		fmt.Println("No arguments passed. Use --help to find out more.")
+		os.Exit(1)
+	}
+	return i.getSearchValue
+}
+
+func (i *Input) GetZipCode() int {
+	return i.getZipCode
+}
+
+func (i *Input) GetDistanceValue() int {
+	return i.getDistanceValue
+}
+
+func Base() Config {
+	config := viper.New()
+	config.SetConfigName(".go_grub")
+	config.AddConfigPath(".")
+	config.AddConfigPath("$HOME/")
+	config.SetConfigType("yaml")
+	err := config.ReadInConfig() // Find and read the config file
+	if err != nil {              // Handle errors reading the config file
 		fatalStr := "Fatal error config file: %s \n" +
 			"Place config file in $HOME/.go_grub.yml\n" +
 			"yelp: \n  api_url: apiurlgoeshere (not required has default set)\n" +
 			"  api_token: apitokegoeshere \n"
 		panic(fmt.Errorf(fatalStr, err))
 	}
-	viper.SetDefault("yelp.api_url", "https://api.yelp.com/v3/")
-	yelpAPIUrl := viper.Get("yelp.api_url")
-	yelpAPIToken := viper.Get("yelp.api_token")
-	return yelpAPIUrl.(string), yelpAPIToken.(string)
-}
+	config.SetDefault("yelp.api_url", "https://api.yelp.com/v3/")
 
-// Get CLI arguments and evaluate them
-func ParseCLI() (string, int, int) {
-	var searchArg string
-	var zipArg int
-	var distanceArg int
+	var searchValue string
+	var zipCode int
+	var distance int
 	var verbose bool
-	pflag.StringVarP(&searchArg, "search", "s", "", "Keyword to search for on Yelp. REQUIRED")
-	pflag.IntVarP(&zipArg, "zip", "z", 12345, "Zip code to search around. REQUIRED")
-	pflag.IntVarP(&distanceArg, "distance", "d", 10, "Distance in miles around the zip you are willing to look. NOT REQUIRED")
+	pflag.StringVarP(&searchValue, "search", "s", "", "Keyword to search for on Yelp. REQUIRED")
+	pflag.IntVarP(&zipCode, "zip", "z", 12345, "Zip code to search around. REQUIRED")
+	pflag.IntVarP(&distance, "distance", "d", 10, "Distance in miles around the zip you are willing to look. NOT REQUIRED")
 	pflag.BoolVarP(&verbose, "verbose", "v", false, "Verbose mode")
 	pflag.Parse()
-	if verbose == false {
-		log.SetLevel(log.WarnLevel)
-	} else {
-		log.SetLevel(log.DebugLevel)
-		resty.SetDebug(true)
+	if verbose {
+		fmt.Println("Here is the value of flag searchValue: ", searchValue)
+		fmt.Println("Here is the value of flag zipCode: ", zipCode)
+		fmt.Println("Here is the value of flag distanceArg: ", distance)
 	}
-	log.Debug("flag searchArg = ", searchArg)
-	log.Debug("flag zipArg = ", zipArg)
-	log.Debug("flag distanceArg = ", distanceArg)
-	if searchArg == "" {
-		fmt.Println("No arguments passed. Use --help to find out more.")
-		os.Exit(1)
+
+	return &Input{
+		getAPIURL:        config.Get("yelp.api_url").(string),
+		getAPIToken:      config.Get("yelp.api_token").(string),
+		getVerbose:       verbose,
+		getSearchValue:   searchValue,
+		getZipCode:       zipCode,
+		getDistanceValue: distance * 1609,
 	}
-	// Convert from miles to meters to use in request
-	distanceArgMeter := distanceArg * 1609
-	log.Debug("distanceArgMeter = ", distanceArgMeter)
-	return searchArg, zipArg, distanceArgMeter
 }
 
-// Resty global configuration
-func RestyConfig(yelpAPIUrl string, yelpAPIToken string) {
+type Yelp struct {
+	yelpAPIUrl   string
+	yelpAPIToken string
+	debug        bool
+	keyword      string
+	zipCode      int
+	distance     int
+}
+
+func (y *Yelp) RestyConfig() {
 	// Host URL for all request. So you can use relative URL in the request
-	resty.SetHostURL(yelpAPIUrl)
+	resty.SetHostURL(y.yelpAPIUrl)
+	resty.SetDebug(y.debug)
 
 	// Headers for all request
 	resty.SetHeader("Accept", "application/json")
@@ -72,30 +124,31 @@ func RestyConfig(yelpAPIUrl string, yelpAPIToken string) {
 		"Content-Type": "application/json",
 		"User-Agent":   "go_grub",
 	})
-	resty.SetAuthToken(yelpAPIToken)
+	resty.SetAuthToken(y.yelpAPIToken)
 }
 
-// Get the list of buisnesses based on the requested arguments
-func RequestBuisnessSearch(keywordSearch string, zipSearch int, distanceSearch int) []byte {
+func (y *Yelp) RequestBuisnessSearch() []byte {
 	resp, err := resty.R().
 		SetQueryParams(map[string]string{
-			"term":       keywordSearch,
-			"location":   strconv.Itoa(zipSearch),
-			"radius":     strconv.Itoa(distanceSearch),
+			"term":       y.keyword,
+			"location":   strconv.Itoa(y.zipCode),
+			"radius":     strconv.Itoa(y.distance),
 			"categories": "restaurants",
 			"open_now":   "true",
 			"sort_by":    "rating",
 		}).
 		Get("businesses/search")
-	log.Debug("Response Body: ", resp.String())
+	//fmt.Printf("\nResponse Body: %v", resp.String())
 	if err != nil {
 		fmt.Printf("\nResponse Err: %v", err)
+	}
+	if resp.StatusCode() != 200 {
+		fmt.Println("Error: ", resp.String())
 	}
 	return resp.Body()
 }
 
-// Parse the response from RequestBuisnessSearch
-func ParseResponse(input []byte) {
+func (y *Yelp) ParseResponse(input []byte) {
 	jsonParsed, err := gabs.ParseJSON(input)
 	if err != nil {
 		fmt.Printf("\ngabs.ParseJson err: %v", err)
@@ -107,9 +160,9 @@ func ParseResponse(input []byte) {
 }
 
 func main() {
-	yelpAPIUrl, yelpAPIToken := ReadConfig()
-	keywordSearch, zipSearch, distanceSearch := ParseCLI()
-	RestyConfig(yelpAPIUrl, yelpAPIToken)
-	buisnessBody := RequestBuisnessSearch(keywordSearch, zipSearch, distanceSearch)
-	ParseResponse(buisnessBody)
+	base := Base()
+	yelp := Yelp{base.GetAPIURL(), base.GetAPIToken(), base.GetVerbose(), base.GetSearchValue(), base.GetZipCode(), base.GetDistanceValue()}
+	yelp.RestyConfig()
+	resp := yelp.RequestBuisnessSearch()
+	yelp.ParseResponse(resp)
 }
