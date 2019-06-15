@@ -23,7 +23,7 @@ type Config interface {
 type Input struct {
 	getAPIURL        string
 	getAPIToken      string
-	getVerbose         bool
+	getVerbose       bool
 	getSearchValue   string
 	getZipCode       int
 	getDistanceValue int
