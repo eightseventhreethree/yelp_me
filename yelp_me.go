@@ -11,6 +11,7 @@ import (
 	"gopkg.in/resty.v1"
 )
 
+// Define methods to access all the input values from the CLI or the config file
 type Config interface {
 	GetAPIURL() string
 	GetAPIToken() string
@@ -20,6 +21,7 @@ type Config interface {
 	GetDistanceValue() int
 }
 
+// Define all the values for accessing
 type Input struct {
 	getAPIURL        string
 	getAPIToken      string
@@ -29,24 +31,25 @@ type Input struct {
 	getDistanceValue int
 }
 
+// Get the value from Base
 func (i *Input) GetAPIURL() string {
 	if i.getAPIURL == "" {
 		return "<not implemented>"
 	}
 	return i.getAPIURL
 }
-
+// Get the value from Base
 func (i *Input) GetAPIToken() string {
 	if i.getAPIToken == "" {
 		return "<not implemented>"
 	}
 	return i.getAPIToken
 }
-
+// Get the value from Base
 func (i *Input) GetVerbose() bool {
 	return i.getVerbose
 }
-
+// Get the value from Base
 func (i *Input) GetSearchValue() string {
 	if i.getSearchValue == "" {
 		fmt.Println("No arguments passed. Use --help to find out more.")
@@ -54,15 +57,16 @@ func (i *Input) GetSearchValue() string {
 	}
 	return i.getSearchValue
 }
-
+// Get the value from Base
 func (i *Input) GetZipCode() int {
 	return i.getZipCode
 }
-
+// Get the value from Base
 func (i *Input) GetDistanceValue() int {
 	return i.getDistanceValue
 }
 
+// Get config from the yml file and parse the cli arguments and store them in Input struct
 func Base() Config {
 	config := viper.New()
 	config.SetConfigName(".go_grub")
@@ -104,6 +108,7 @@ func Base() Config {
 	}
 }
 
+// Create base for talking to Yelp
 type Yelp struct {
 	yelpAPIUrl   string
 	yelpAPIToken string
@@ -113,6 +118,7 @@ type Yelp struct {
 	distance     int
 }
 
+// Configure Resty to make calls
 func (y *Yelp) RestyConfig() {
 	// Host URL for all request. So you can use relative URL in the request
 	resty.SetHostURL(y.yelpAPIUrl)
@@ -127,6 +133,7 @@ func (y *Yelp) RestyConfig() {
 	resty.SetAuthToken(y.yelpAPIToken)
 }
 
+// Search for businesses with the defined values from the CLI sorted by rating
 func (y *Yelp) RequestBuisnessSearch() []byte {
 	resp, err := resty.R().
 		SetQueryParams(map[string]string{
@@ -148,6 +155,7 @@ func (y *Yelp) RequestBuisnessSearch() []byte {
 	return resp.Body()
 }
 
+// Parse the json response and put into a table format
 func (y *Yelp) ParseResponse(input []byte) {
 	jsonParsed, err := gabs.ParseJSON(input)
 	if err != nil {
@@ -159,6 +167,7 @@ func (y *Yelp) ParseResponse(input []byte) {
 	}
 }
 
+// Call Base and Yelp
 func main() {
 	base := Base()
 	yelp := Yelp{base.GetAPIURL(), base.GetAPIToken(), base.GetVerbose(), base.GetSearchValue(), base.GetZipCode(), base.GetDistanceValue()}
